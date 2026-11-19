@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MovieBox Admin</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<style>
+:root{--bg:#141414;--bg2:#1f1f1f;--card:#2a2a2a;--accent:#e50914;--text:#e5e5e5;--text2:#a3a3a3;--line:#3a3a3a;--blue:#0a84ff;--green:#1f9d55}
+[data-theme="light"]{--bg:#f4f4f4;--bg2:#fff;--card:#fff;--text:#1a1a1a;--text2:#5c5c5c;--line:#d8d8d8}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:16px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hidden{display:none!important}
+/* Loading */
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;gap:16px;align-items:center;justify-content:center;z-index:100;color:var(--accent);font-size:2rem}
+#loading p{font-size:1rem;color:var(--text2)}
+/* Login */
+#loginView{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-box{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:32px 28px;width:100%;max-width:380px}
+.login-box h1{font-size:1.5rem;margin-bottom:6px;color:var(--accent)}
+.login-box p{color:var(--text2);margin-bottom:20px;font-size:.95rem}
+/* Header */
+header{position:sticky;top:0;z-index:50;background:var(--bg2);box-shadow:0 2px 12px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:space-between;padding:12px 20px}
+header h1{font-size:1.2rem;display:flex;align-items:center;gap:10px}
+header h1 i{color:var(--accent)}
+.actions{display:flex;gap:8px}
+/* Controls */
+.btn{min-height:44px;padding:0 18px;border:0;border-radius:6px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#fff;transition:filter .15s,transform .1s}
+.btn:hover{filter:brightness(1.12)}.btn:active{transform:scale(.97)}
+.btn.ghost{background:var(--card);color:var(--text);border:1px solid var(--line)}
+.btn.green{background:var(--green)}.btn.red{background:var(--accent)}
+.btn.sm{min-height:44px;padding:0 14px;font-size:.9rem}
+.btn:disabled{opacity:.6;cursor:wait}
+label{display:block;font-size:.9rem;font-weight:600;margin-bottom:6px}
+.field{margin-bottom:16px}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:12px;min-height:44px;font-size:16px}
+textarea{min-height:100px;resize:vertical}
+small{display:block;margin-top:4px;color:var(--text2);font-size:.8rem}
+/* Layout */
+main{max-width:1100px;margin:0 auto;padding:20px}
+section{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:22px;margin-bottom:24px}
+section>h2{font-size:1.15rem;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+section>h2 i{color:var(--accent)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+.full{grid-column:1/-1}
+.form-actions{display:flex;gap:10px;flex-wrap:wrap}
+.msg{padding:10px 14px;border-radius:6px;margin-bottom:14px;font-size:.92rem}
+.msg.err{background:rgba(229,9,20,.15);color:#ff6b72;border:1px solid var(--accent)}
+.msg.ok{background:rgba(31,157,85,.15);color:#47d17f;border:1px solid var(--green)}
+/* Movie list */
+.search{margin-bottom:16px}
+.movie{display:flex;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px;transition:border-color .15s,transform .15s}
+.movie:hover{border-color:var(--accent);transform:translateY(-2px)}
+@media(hover:none){.movie:hover{transform:none}.movie:active{border-color:var(--accent)}}
+.movie img{width:80px;height:120px;object-fit:cover;border-radius:4px;flex-shrink:0;background:var(--bg)}
+.info{flex:1;min-width:0}
+.info h3{font-size:1.05rem;margin-bottom:4px;overflow-wrap:anywhere}
+.meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--text2);font-size:.88rem;margin-bottom:8px}
+.star{color:#f5b50a}
+.badge{padding:3px 9px;border-radius:20px;font-size:.75rem;font-weight:600;color:#fff}
+.badge.play{background:var(--blue)}.badge.dl{background:var(--green)}
+.desc{color:var(--text2);font-size:.9rem;margin-bottom:10px;overflow-wrap:anywhere}
+mark{background:rgba(229,9,20,.35);color:inherit;border-radius:2px}
+.row-actions{display:flex;gap:8px;flex-wrap:wrap}
+.empty{text-align:center;color:var(--text2);padding:32px 12px}
+.empty i{font-size:2rem;margin-bottom:10px;display:block;opacity:.6}
+/* Reports */
+.report{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:6px;padding:12px 14px;margin-bottom:10px}
+.report h3{font-size:1rem}.report p{font-size:.85rem;color:var(--text2);overflow-wrap:anywhere}
+/* Toast */
+#toasts{position:fixed;right:16px;bottom:16px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--card);border-left:4px solid var(--green);color:var(--text);padding:12px 16px;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.4);animation:in .25s}
+.toast.err{border-color:var(--accent)}
+@keyframes in{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+@media(max-width:767px){.grid{grid-template-columns:1fr}main{padding:12px}section{padding:16px}header{padding:10px 12px}.btn .lbl{display:none}.movie img{width:64px;height:96px}#toasts{left:16px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div id="loading"><i class="fa-solid fa-film"></i><p>Loading…</p></div>
+
+<!-- Login -->
+<div id="loginView" class="hidden">
+  <form class="login-box" id="loginForm" novalidate>
+    <h1><i class="fa-solid fa-film"></i> MovieBox Admin</h1>
+    <p>Sign in to manage movies and reports.</p>
+    <div id="loginMsg" class="msg err hidden" role="alert"></div>
+    <div class="field"><label for="email">Email</label><input type="email" id="email" autocomplete="username" required></div>
+    <div class="field"><label for="password">Password</label><input type="password" id="password" autocomplete="current-password" required></div>
+    <button class="btn" style="width:100%" id="loginBtn" type="submit">Sign in</button>
+  </form>
+</div>
+
+<!-- Dashboard -->
+<div id="app" class="hidden">
+  <header>
+    <h1><i class="fa-solid fa-film"></i> MovieBox Admin</h1>
+    <div class="actions">
+      <button class="btn ghost" id="themeBtn" aria-label="Toggle theme"><i class="fa-solid fa-moon" id="themeIcon"></i></button>
+      <button class="btn ghost" id="logoutBtn" aria-label="Log out"><i class="fa-solid fa-right-from-bracket"></i><span class="lbl">Log out</span></button>
+    </div>
+  </header>
+
+  <main>
+    <section aria-labelledby="formTitle">
+      <h2 id="formTitle"><i class="fa-solid fa-plus"></i> Add movie</h2>
+      <div id="formMsg" class="msg hidden" role="alert"></div>
+      <form id="movieForm" novalidate>
+        <div class="grid">
+          <div class="field"><label for="title">Movie title</label><input id="title" required></div>
+          <div class="field"><label for="genre">Genre</label>
+            <select id="genre" required><option value="">Select genre</option></select></div>
+          <div class="field"><label for="poster">Poster image URL</label><input id="poster" type="url" required><small>Direct image link</small></div>
+          <div class="field"><label for="playUrl">Play online URL</label><input id="playUrl" type="url" required><small>Link to watch movie online (streaming URL)</small></div>
+          <div class="field full"><label for="downloadUrl">Download URL</label><input id="downloadUrl" type="url" required><small>Direct download link for movie file</small></div>
+          <div class="field full"><label for="description">Description</label><textarea id="description" required></textarea></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn" id="submitBtn" type="submit">Add Movie</button>
+          <button class="btn ghost hidden" id="cancelBtn" type="button">Cancel</button>
+        </div>
+      </form>
+    </section>
+
+    <section aria-labelledby="mTitle">
+      <h2 id="mTitle"><i class="fa-solid fa-clapperboard"></i> Manage movies</h2>
+      <input class="search" id="search" type="search" placeholder="Search by title or genre" aria-label="Search movies">
+      <div id="movieList"></div>
+    </section>
+
+    <section aria-labelledby="rTitle">
+      <h2 id="rTitle"><i class="fa-solid fa-flag"></i> Broken link reports</h2>
+      <div id="reportList"></div>
+    </section>
+  </main>
+</div>
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+// ===== Firebase Configuration =====
+// Replace with your Firebase project credentials
+const firebaseConfig = {
+  apiKey: "AIzaSyDOEFZzPDrmIX_b2ri3K6n-_2jRtp1m5aU",
+  authDomain: "apxedflm-8faf9.firebaseapp.com",
+  databaseURL: "https://apxedflm-8faf9-default-rtdb.firebaseio.com",
+  projectId: "apxedflm-8faf9",
+  storageBucket: "apxedflm-8faf9.firebasestorage.app",
+  messagingSenderId: "878259300856",
+  appId: "1:878259300856:web:3acd8da2c07cf84de64e0d"
+};
+
+const GENRES = ["Action","Comedy","Drama","Horror","Sci-Fi","Romance","Thriller","Animation","Adventure","Fantasy"];
+const $ = id => document.getElementById(id);
+let db, auth, allMovies = [], editingId = null, searchTerm = "";
+
+// ----- Helpers -----
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function highlight(text) {
+  const safe = esc(text);
+  if (!searchTerm) return safe;
+  const re = new RegExp("(" + esc(searchTerm).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "gi");
+  return safe.replace(re, "<mark>$1</mark>");
+}
+function toast(msg, err) {
+  const t = document.createElement("div");
+  t.className = "toast" + (err ? " err" : "");
+  t.textContent = msg;
+  $("toasts").appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+function showMsg(el, text, type) {
+  el.textContent = text; el.className = "msg " + type;
+}
+function isUrl(v) { try { const u = new URL(v); return /^https?:$/.test(u.protocol); } catch { return false; } }
+
+// ----- Theme (persisted) -----
+function applyTheme(t) {
+  document.documentElement.setAttribute("data-theme", t);
+  $("themeIcon").className = t === "dark" ? "fa-solid fa-moon" : "fa-solid fa-sun";
+}
+function initTheme() {
+  let t = "dark";
+  try { t = localStorage.getItem("theme") || "dark"; } catch (e) {}
+  applyTheme(t);
+}
+function toggleTheme() {
+  const t = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  applyTheme(t);
+  try { localStorage.setItem("theme", t); } catch (e) {}
+}
+
+// ----- Firebase init & auth -----
+function initializeFirebase() {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth(); db = firebase.database();
+    // Session persistence: stays signed in across reloads
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
+    auth.onAuthStateChanged(user => {
+      $("loading").classList.add("hidden");
+      if (user) { $("loginView").classList.add("hidden"); $("app").classList.remove("hidden"); listen(); }
+      else { $("app").classList.add("hidden"); $("loginView").classList.remove("hidden"); unlisten(); }
+    });
+  } catch (e) {
+    console.error("Firebase init failed:", e);
+    $("loading").classList.add("hidden"); $("loginView").classList.remove("hidden");
+    showMsg($("loginMsg"), "Firebase is not configured. Add your project credentials to firebaseConfig.", "err");
+  }
+}
+async function login(e) {
+  e.preventDefault();
+  const email = $("email").value.trim(), pw = $("password").value;
+  if (!email || !pw) return showMsg($("loginMsg"), "Enter your email and password.", "err");
+  $("loginBtn").disabled = true; $("loginBtn").textContent = "Signing in…";
+  try { await auth.signInWithEmailAndPassword(email, pw); $("loginMsg").classList.add("hidden"); }
+  catch (err) { console.error(err); showMsg($("loginMsg"), "Sign-in failed. Check your email and password.", "err"); }
+  $("loginBtn").disabled = false; $("loginBtn").textContent = "Sign in";
+}
+const logout = () => auth.signOut().catch(e => toast("Log out failed", true));
+
+// ----- Real-time listeners -----
+let moviesRef, reportsRef;
+function listen() {
+  unlisten();
+  moviesRef = db.ref("movies"); reportsRef = db.ref("reports");
+  moviesRef.on("value", snap => {
+    const v = snap.val() || {};
+    allMovies = Object.entries(v).map(([id, m]) => ({ id, ...m })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    renderMovies();
+  }, err => { console.error(err); toast("Could not load movies: " + err.message, true); });
+  reportsRef.on("value", snap => {
+    const v = snap.val() || {};
+    renderReports(Object.entries(v).map(([id, r]) => ({ id, ...r })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)));
+  }, err => console.error(err));
+}
+function unlisten() { if (moviesRef) moviesRef.off(); if (reportsRef) reportsRef.off(); }
+
+// ----- Render movies -----
+const FALLBACK = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="120"><rect width="80" height="120" fill="#333"/><text x="40" y="64" fill="#888" font-size="12" text-anchor="middle">No image</text></svg>');
+function renderMovies() {
+  const q = searchTerm.toLowerCase();
+  const list = allMovies.filter(m => !q || (m.title || "").toLowerCase().includes(q) || (m.genre || "").toLowerCase().includes(q));
+  const box = $("movieList");
+  if (!list.length) {
+    box.innerHTML = `<div class="empty"><i class="fa-solid fa-film"></i>${allMovies.length ? "No movies match your search." : "No movies yet. Add your first movie above."}</div>`;
+    return;
+  }
+  box.innerHTML = list.map(m => {
+    const avg = m.ratingCount ? (m.ratingTotal / m.ratingCount).toFixed(1) : "0.0";
+    const d = m.description || "";
+    return `<article class="movie">
+      <img src="${esc(m.poster)}" alt="Poster of ${esc(m.title)}" loading="lazy" onerror="this.onerror=null;this.src='${FALLBACK}'">
+      <div class="info">
+        <h3>${highlight(m.title)}</h3>
+        <div class="meta"><span>${highlight(m.genre)}</span><span><i class="fa-solid fa-star star"></i> ${avg} (${m.ratingCount || 0})</span>
+          ${m.playUrl ? '<span class="badge play"><i class="fa-solid fa-play"></i> Play Online</span>' : ""}
+          ${m.downloadUrl ? '<span class="badge dl"><i class="fa-solid fa-download"></i> Download</span>' : ""}</div>
+        <p class="desc">${esc(d.slice(0, 100))}${d.length > 100 ? "…" : ""}</p>
+        <div class="row-actions">
+          <button class="btn green sm" data-edit="${esc(m.id)}"><i class="fa-solid fa-pen"></i> Edit</button>
+          <button class="btn red sm" data-del="${esc(m.id)}"><i class="fa-solid fa-trash"></i> Delete</button>
+        </div></div></article>`;
+  }).join("");
+}
+function renderReports(list) {
+  const box = $("reportList");
+  if (!list.length) { box.innerHTML = '<div class="empty"><i class="fa-solid fa-circle-check"></i>No broken link reports.</div>'; return; }
+  box.innerHTML = list.map(r => `<div class="report"><div>
+      <h3>${esc(r.movieTitle || "Untitled")}</h3>
+      <p>Movie ID: ${esc(r.movieId)}</p>
+      <p>${r.timestamp ? new Date(r.timestamp).toLocaleString() : "Unknown time"} · User: ${esc(r.userId || "Anonymous")}</p></div>
+      <button class="btn green sm" data-resolve="${esc(r.id)}"><i class="fa-solid fa-check"></i> Resolve</button></div>`).join("");
+}
+
+// ----- Form: add / edit -----
+function getFormData() {
+  const f = {};
+  ["title", "genre", "poster", "playUrl", "downloadUrl", "description"].forEach(k => f[k] = $(k).value.trim());
+  return f;
+}
+function validate(f) {
+  if (Object.values(f).some(v => !v)) return "All fields are required.";
+  if (!isUrl(f.poster)) return "Poster image URL must start with http:// or https://.";
+  if (!isUrl(f.playUrl)) return "Play online URL must start with http:// or https://.";
+  if (!isUrl(f.downloadUrl)) return "Download URL must start with http:// or https://.";
+  return null;
+}
+async function saveMovie(e) {
+  e.preventDefault();
+  const f = getFormData(), err = validate(f);
+  if (err) return showMsg($("formMsg"), err, "err");
+  $("submitBtn").disabled = true;
+  try {
+    if (editingId) {
+      await db.ref("movies/" + editingId).update(f);   // keeps ratings & timestamp
+      toast("Movie updated");
+    } else {
+      await db.ref("movies").push({ ...f, timestamp: Date.now(), ratingTotal: 0, ratingCount: 0 });
+      toast("Movie added");
+    }
+    resetForm();
+  } catch (e2) {
+    console.error(e2); showMsg($("formMsg"), "Could not save: " + e2.message, "err");
+  }
+  $("submitBtn").disabled = false;
+}
+function startEdit(id) {
+  const m = allMovies.find(x => x.id === id); if (!m) return;
+  editingId = id;
+  ["title", "genre", "poster", "playUrl", "downloadUrl", "description"].forEach(k => $(k).value = m[k] || "");
+  $("formTitle").innerHTML = '<i class="fa-solid fa-pen"></i> Edit movie';
+  $("submitBtn").textContent = "Update Movie"; $("cancelBtn").classList.remove("hidden");
+  $("formMsg").classList.add("hidden");
+  $("movieForm").scrollIntoView({ behavior: "smooth", block: "start" }); $("title").focus();
+}
+function resetForm() {
+  editingId = null; $("movieForm").reset();
+  $("formTitle").innerHTML = '<i class="fa-solid fa-plus"></i> Add movie';
+  $("submitBtn").textContent = "Add Movie"; $("cancelBtn").classList.add("hidden");
+  $("formMsg").classList.add("hidden");
+}
+async function deleteMovie(id) {
+  const m = allMovies.find(x => x.id === id);
+  if (!confirm(`Delete "${m ? m.title : "this movie"}"? This can't be undone.`)) return;
+  try { await db.ref("movies/" + id).remove(); if (editingId === id) resetForm(); toast("Movie deleted"); }
+  catch (e) { console.error(e); toast("Delete failed: " + e.message, true); }
+}
+async function resolveReport(id) {
+  try { await db.ref("reports/" + id).remove(); toast("Report resolved"); }
+  catch (e) { console.error(e); toast("Could not resolve: " + e.message, true); }
+}
+
+// ----- Events -----
+window.addEventListener("DOMContentLoaded", () => {
+  initTheme();
+  $("genre").insertAdjacentHTML("beforeend", GENRES.map(g => `<option>${g}</option>`).join(""));
+  $("loginForm").addEventListener("submit", login);
+  $("movieForm").addEventListener("submit", saveMovie);
+  $("cancelBtn").addEventListener("click", resetForm);
+  $("themeBtn").addEventListener("click", toggleTheme);
+  $("logoutBtn").addEventListener("click", logout);
+  let t; $("search").addEventListener("input", e => { clearTimeout(t); t = setTimeout(() => { searchTerm = e.target.value.trim(); renderMovies(); }, 150); });
+  $("movieList").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.edit) startEdit(b.dataset.edit); else if (b.dataset.del) deleteMovie(b.dataset.del);
+  });
+  $("reportList").addEventListener("click", e => {
+    const b = e.target.closest("[data-resolve]"); if (b) resolveReport(b.dataset.resolve);
+  });
+  initializeFirebase();
+});
+</script>
+</body>
+</html>
